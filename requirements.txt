@@ -1,0 +1,14 @@
+fastapi 
+uvicorn 
+twilio 
+openai 
+python-multipart
+python-telegram-bot
+python-dotenv
+sqlalchemy 
+asyncpg 
+alembic 
+apscheduler
+greenlet
+matplotlib
+numpy
