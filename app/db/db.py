@@ -9,7 +9,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.environ["DATABASE_URL"]  # e.g. postgresql+asyncpg://coach:coachpass@localhost:5432/coachdb
+raw = os.environ["DATABASE_URL"]
+
+# Fly commonly provides postgres:// or postgresql://
+if raw.startswith("postgres://"):
+    DATABASE_URL = raw.replace("postgres://", "postgresql+asyncpg://", 1)
+elif raw.startswith("postgresql://"):
+    DATABASE_URL = raw.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
+    DATABASE_URL = raw  # already asyncpg-style or custom
 
 Base = declarative_base()
 engine = create_async_engine(DATABASE_URL, echo=False)
