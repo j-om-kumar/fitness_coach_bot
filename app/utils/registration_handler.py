@@ -51,7 +51,8 @@ async def start_registration(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "Send me:\n"
             "• A meal PHOTO anytime (I'll estimate calories/protein)\n"
             "• Weight like: 'weight 98.6'\n"
-            "• Steps like: 'steps 8200'"
+            "• Steps like: 'steps 8200'\n"
+            "• Use /nowreport to see today's progress"
         )
         return ConversationHandler.END
     
@@ -336,7 +337,8 @@ async def receive_activity_level(update: Update, context: ContextTypes.DEFAULT_T
         f"Now you can:\n"
         f"• Send meal PHOTOS (I'll track all macros)\n"
         f"• Track daily weight: 'weight 75.5'\n"
-        f"• Track steps: 'steps 8200'\n\n"
+        f"• Track steps: 'steps 8200'\n"
+        f"• Use /nowreport to see today's progress\n\n"
         f"I'll send you daily reports showing your progress toward these targets! 💪",
         reply_markup=ReplyKeyboardRemove(),
         parse_mode="Markdown"

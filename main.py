@@ -14,6 +14,7 @@ from app.config import TELEGRAM_TOKEN, DEFAULT_TZ
 from app.utils.handlers import handle_photo, handle_text
 from app.utils.registration_handler import registration_handler
 from app.utils.recipe_handler import end_recipe_mode
+from app.utils.now_report_handler import handle_now_report
 from app.utils.scheduler_tasks import (
     send_daily_reminders,
     send_lunch_reminder,
@@ -37,6 +38,7 @@ def setup_handlers() -> None:
     tg_app.add_handler(registration_handler)
     
     # Command handlers
+    tg_app.add_handler(CommandHandler("nowreport", handle_now_report))
     tg_app.add_handler(CommandHandler("end_recipe", end_recipe_mode))
     
     # Other handlers

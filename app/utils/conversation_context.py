@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 # In production, use Redis or database
 _conversation_contexts: Dict[str, 'ConversationContext'] = {}
 
-# Default context expires after 5 minutes of inactivity
-DEFAULT_CONTEXT_TIMEOUT = 300  # seconds
+# Default context expires after 10 minutes of inactivity
+DEFAULT_CONTEXT_TIMEOUT = 600  # seconds (10 minutes)
 
 
 class ConversationContext:

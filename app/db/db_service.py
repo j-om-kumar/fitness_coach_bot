@@ -276,3 +276,102 @@ async def get_daily_summary(user: User, log_date: date) -> dict:
             'total_fats': int(total_fats),
             'total_fiber': int(total_fiber)
         }
+
+
+async def get_meal_by_id(meal_id: int) -> Optional[Meal]:
+    """
+    Get a meal by its ID.
+    
+    Args:
+        meal_id: Meal ID
+        
+    Returns:
+        Meal instance or None if not found
+    """
+    async with SessionLocal() as session:
+        result = await session.execute(
+            select(Meal).where(Meal.id == meal_id)
+        )
+        return result.scalar_one_or_none()
+
+
+async def update_meal(
+    meal_id: int,
+    meal_type: Optional[str] = None,
+    description: Optional[str] = None,
+    calories_kcal: Optional[int] = None,
+    protein_g: Optional[int] = None,
+    carbs_g: Optional[int] = None,
+    fats_g: Optional[int] = None,
+    fiber_g: Optional[int] = None
+) -> Optional[Meal]:
+    """
+    Update an existing meal entry.
+    
+    Args:
+        meal_id: ID of the meal to update
+        meal_type: New meal type (optional)
+        description: New description (optional)
+        calories_kcal: New calories (optional)
+        protein_g: New protein (optional)
+        carbs_g: New carbs (optional)
+        fats_g: New fats (optional)
+        fiber_g: New fiber (optional)
+        
+    Returns:
+        Updated Meal instance or None if not found
+    """
+    async with SessionLocal() as session:
+        result = await session.execute(
+            select(Meal).where(Meal.id == meal_id)
+        )
+        meal = result.scalar_one_or_none()
+        
+        if not meal:
+            return None
+        
+        # Update only provided fields
+        if meal_type is not None:
+            meal.meal_type = meal_type
+        if description is not None:
+            meal.description = description
+        if calories_kcal is not None:
+            meal.calories_kcal = calories_kcal
+        if protein_g is not None:
+            meal.protein_g = protein_g
+        if carbs_g is not None:
+            meal.carbs_g = carbs_g
+        if fats_g is not None:
+            meal.fats_g = fats_g
+        if fiber_g is not None:
+            meal.fiber_g = fiber_g
+        
+        await session.commit()
+        await session.refresh(meal)
+        
+        return meal
+
+
+async def delete_meal(meal_id: int) -> bool:
+    """
+    Delete a meal entry.
+    
+    Args:
+        meal_id: ID of the meal to delete
+        
+    Returns:
+        True if deleted, False if not found
+    """
+    async with SessionLocal() as session:
+        result = await session.execute(
+            select(Meal).where(Meal.id == meal_id)
+        )
+        meal = result.scalar_one_or_none()
+        
+        if not meal:
+            return False
+        
+        await session.delete(meal)
+        await session.commit()
+        
+        return True

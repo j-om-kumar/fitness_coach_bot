@@ -106,7 +106,7 @@ async def handle_food_photo(update: Update, user, photo_file_id: str, file_bytes
         return
     
     # Save meal to database
-    await save_meal(
+    meal = await save_meal(
         user=user,
         meal_type=analysis.meal_type,
         description=analysis.description,
@@ -118,6 +118,29 @@ async def handle_food_photo(update: Update, user, photo_file_id: str, file_bytes
         photo_file_id=photo_file_id
     )
     
+    # Save conversation context for 10 minutes
+    from app.utils.conversation_context import ConversationContext
+    telegram_user = update.effective_user
+    ConversationContext.save_context(
+        telegram_user.id,
+        'meal_context',
+        {
+            'last_meal_id': meal.id,
+            'last_photo_file_id': photo_file_id,
+            'last_photo_bytes': file_bytes,
+            'last_meal_analysis': {
+                'description': analysis.description,
+                'meal_type': analysis.meal_type,
+                'calories_kcal': analysis.calories_kcal,
+                'protein_g': analysis.protein_g,
+                'carbs_g': analysis.carbs_g,
+                'fats_g': analysis.fats_g,
+                'fiber_g': analysis.fiber_g,
+                'confidence': analysis.confidence
+            }
+        }
+    )
+    
     # Build detailed response
     reply = f"🍽️ **{analysis.meal_type.replace('_', ' ').title()} Logged**\n\n"
     
@@ -126,16 +149,17 @@ async def handle_food_photo(update: Update, user, photo_file_id: str, file_bytes
     
     # Show user's notes if provided
     if user_caption:
-        reply += f"� Your notes: _{user_caption}_\n\n"
+        reply += f"📝 Your notes: _{user_caption}_\n\n"
     
-    reply += "�📊 **Nutritional Information:**\n"
+    reply += "📊 **Nutritional Information:**\n"
     reply += f"• Calories: {analysis.calories_kcal if analysis.calories_kcal else '—'} kcal\n"
     reply += f"• Protein: {analysis.protein_g if analysis.protein_g else '—'} g\n"
     reply += f"• Carbs: {analysis.carbs_g if analysis.carbs_g else '—'} g\n"
     reply += f"• Fats: {analysis.fats_g if analysis.fats_g else '—'} g\n"
     reply += f"• Fiber: {analysis.fiber_g if analysis.fiber_g else '—'} g\n\n"
     reply += f"🎯 Confidence: {analysis.confidence}\n\n"
-    reply += "Keep tracking your meals! 💪"
+    reply += "Keep tracking your meals! 💪\n\n"
+    reply += "💡 _You can modify this within 10 minutes (e.g., 'add rice to that', 'that was large')_"
     
     await update.message.reply_text(reply, parse_mode="Markdown")
 
@@ -205,6 +229,51 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user = update.effective_user
     text = (update.message.text or "").strip()
 
+    # Check for active meal context first (10-minute window)
+    from app.utils.conversation_context import ConversationContext
+    from app.services.intent_classifier import detect_modification_intent, IntentType
+    from app.utils.context_actions import (
+        handle_meal_deletion,
+        handle_portion_adjustment,
+        handle_meal_type_change,
+        handle_add_to_meal,
+        handle_meal_query
+    )
+    
+    meal_context = ConversationContext.get_context(user.id, 'meal_context')
+    
+    if meal_context and not meal_context.is_expired(timeout_seconds=600):  # 10 minutes
+        # Detect if user wants to modify their last meal
+        intent_result = detect_modification_intent(text)
+        
+        if intent_result['intent'] != IntentType.NONE:
+            # Handle context-aware modification
+            context_data = meal_context.data
+            
+            if intent_result['intent'] == IntentType.DELETE_MEAL:
+                await handle_meal_deletion(update, context_data)
+                ConversationContext.clear_context(user.id, 'meal_context')
+                return
+            
+            elif intent_result['intent'] == IntentType.CHANGE_PORTION:
+                portion_size = intent_result.get('portion_size')
+                await handle_portion_adjustment(update, context_data, portion_size)
+                return
+            
+            elif intent_result['intent'] == IntentType.CHANGE_MEAL_TYPE:
+                meal_type = intent_result.get('meal_type')
+                await handle_meal_type_change(update, context_data, meal_type)
+                return
+            
+            elif intent_result['intent'] == IntentType.ADD_TO_MEAL:
+                food_item = intent_result.get('food_item')
+                await handle_add_to_meal(update, context, context_data, food_item)
+                return
+            
+            elif intent_result['intent'] == IntentType.QUERY_MEAL:
+                nutrient = intent_result.get('nutrient')
+                await handle_meal_query(update, context_data, nutrient)
+                return
     
     # Try parsing weight first
     weight = parse_weight(text)
@@ -292,6 +361,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "🍳 **Recipe Suggestions:**\n"
         "• Ask for meal ideas based on your remaining macros\n"
         "• Get personalized recipes for your goals\n\n"
+        "📊 **Commands:**\n"
+        "• /nowreport - See today's nutrition progress\n\n"
         "What would you like to do?"
     )
 
